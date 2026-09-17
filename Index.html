@@ -273,7 +273,7 @@
       div.className = 'col-md col-6';
       div.innerHTML = `
         <div class="filter-label">${dispName(col)}</div>
-        <select class="form-select form-select-sm" id="filter-${col}" onchange="applyFilters()">
+        <select class="form-select form-select-sm" id="filter-${col}" onchange="applyFilters('${col}')">
           <option value="">All ${dispName(col)}</option>
           ${vals.map(v => `<option value="${v.toLowerCase()}">${v}</option>`).join('')}
         </select>`;
@@ -281,24 +281,48 @@
     });
   }
 
-  function applyFilters() {
-    filteredRows = globalData.rows.filter(row => {
-      for (const col of FILTER_COLS) {
-        if (colIdx(col) === undefined) continue;
-        const el = document.getElementById('filter-' + col);
-        if (!el || el.value === '') continue;
-        if (String(row[colIdx(col)]).trim().toLowerCase() !== el.value) return false;
-      }
-      return true;
+  // Rebuild options for a single filter dropdown based on currently available rows
+  function rebuildOptions(col, availableRows) {
+    const el = document.getElementById('filter-' + col);
+    if (!el) return;
+    const prevVal = el.value;
+    const idx = colIdx(col);
+    if (idx === undefined) return;
+
+    const vals = [...new Set(availableRows.map(r => String(r[idx]).trim()))]
+      .filter(v => v !== '').sort((a, b) => a.localeCompare(b));
+
+    el.innerHTML = `<option value="">All ${dispName(col)}</option>` +
+      vals.map(v => `<option value="${v.toLowerCase()}">${v}</option>`).join('');
+
+    // Keep previous selection only if still valid, otherwise reset
+    el.value = vals.some(v => v.toLowerCase() === prevVal) ? prevVal : '';
+  }
+
+  // Cascading filter: downstream filters update their options based on upstream selections
+  function applyFilters(changedCol) {
+    const changedIdx = changedCol !== undefined ? FILTER_COLS.indexOf(changedCol) : -1;
+    let rows = globalData.rows;
+
+    FILTER_COLS.forEach((col, i) => {
+      // Rebuild options for all filters after the one that changed
+      if (i > changedIdx) rebuildOptions(col, rows);
+
+      // Apply this filter to narrow rows for the next iteration
+      const el = document.getElementById('filter-' + col);
+      if (!el || el.value === '') return;
+      rows = rows.filter(row => {
+        const idx = colIdx(col);
+        return idx !== undefined && String(row[idx]).trim().toLowerCase() === el.value;
+      });
     });
+
+    filteredRows = rows;
     renderAll();
   }
 
   function resetFilters() {
-    FILTER_COLS.forEach(col => {
-      const el = document.getElementById('filter-' + col);
-      if (el) el.value = '';
-    });
+    buildFilters();          // fully rebuild all options from globalData.rows
     filteredRows = globalData.rows;
     renderAll();
   }
