@@ -7,9 +7,15 @@ function doGet() {
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
+// Replace with your Google Sheet ID (from the sheet URL: /spreadsheets/d/<SHEET_ID>/edit)
+var SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID_HERE';
+
 function getDashboardData() {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = SPREADSHEET_ID && SPREADSHEET_ID !== 'YOUR_SPREADSHEET_ID_HERE'
+      ? SpreadsheetApp.openById(SPREADSHEET_ID)
+      : SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) throw new Error('Spreadsheet not found. Set SPREADSHEET_ID in Code.gs.');
     const sheet = ss.getSheetByName('latest_untrained') || ss.getActiveSheet();
     if (!sheet) throw new Error("Sheet 'latest_untrained' not found.");
 
