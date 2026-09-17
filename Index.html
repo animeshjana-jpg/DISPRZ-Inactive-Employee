@@ -223,9 +223,12 @@
   let headerMap = {};
   let activeTab = '';
 
-  const FILTER_COLS = ['Zone','GM','Region','RM','AM','CEC','LBP'];
-  const TAB_COLS    = ['GM','Region','RM','AM','CEC','LBP','DH Name'];
+  const FILTER_COLS = ['Asset','Zone','GM','Region','RM','AM','CEC','L1 Lead'];
+  const TAB_COLS    = ['GM','Region','RM','AM','CEC','L1 Lead','DH Name'];
   const ZONE_CLASS  = { east:'kpi-east', west:'kpi-west', north:'kpi-north', south:'kpi-south' };
+  // Display label overrides — col key stays as raw data header, label shown in UI differs
+  const DISPLAY_NAME = { 'CEC': 'Trainer' };
+  function dispName(col) { return DISPLAY_NAME[col] || col; }
 
   // ── Bootstrap ─────────────────────────────────────────────
   google.script.run
@@ -259,9 +262,9 @@
       const div = document.createElement('div');
       div.className = 'col-md col-6';
       div.innerHTML = `
-        <div class="filter-label">${col}</div>
+        <div class="filter-label">${dispName(col)}</div>
         <select class="form-select form-select-sm" id="filter-${col}" onchange="applyFilters()">
-          <option value="">All ${col}</option>
+          <option value="">All ${dispName(col)}</option>
           ${vals.map(v => `<option value="${v.toLowerCase()}">${v}</option>`).join('')}
         </select>`;
       container.appendChild(div);
@@ -300,7 +303,7 @@
       ul.innerHTML += `
         <li class="nav-item">
           <button class="nav-link ${i === 0 ? 'active' : ''}"
-            onclick="switchTab('${col}', this)">${col}</button>
+            onclick="switchTab('${col}', this)">${dispName(col)}</button>
         </li>`;
     });
   }
@@ -365,7 +368,7 @@
     document.getElementById('hier-thead').innerHTML = `
       <tr>
         <th>#</th>
-        <th>${activeTab}</th>
+        <th>${dispName(activeTab)}</th>
         <th>Pending Employees</th>
         <th style="min-width:120px;"></th>
       </tr>`;
