@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .kpi-card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; border-top: 4px solid #0d6efd; }
+    .kpi-title { font-size: 0.9rem; color: #6c757d; text-transform: uppercase; font-weight: bold; }
+    .kpi-value { font-size: 2rem; font-weight: bold; color: #212529; }
+    .nav-pills .nav-link { border-radius: 20px; color: #495057; margin-right: 10px; background-color: #e9ecef; }
+    .nav-pills .nav-link.active { background-color: #f8f9fa; color: #0d6efd; border: 1px solid #dee2e6; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .table-container { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-top: 20px; overflow-x: auto; }
+    .table th { background-color: #f8f9fa; text-transform: uppercase; font-size: 0.85rem; color: #495057; }
+    .filter-label { font-size: 0.85rem; font-weight: bold; color: #495057; }
+    #loader { display: flex; justify-content: center; align-items: center; height: 100vh; }
+    #dashboard { display: none; }
+  </style>
+</head>
+<body>
+
+  <div id="loader">
+    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
+  </div>
+
+  <div id="dashboard" class="container-fluid py-4">
+    <h3 class="mb-4 fw-bold text-primary">Untrained Wishmaster Dashboard</h3>
+
+    <!-- Filters Section -->
+    <div class="card mb-4 shadow-sm border-0">
+      <div class="card-body">
+        <div class="row g-3" id="filters-container">
+          <!-- Filters dynamically injected here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs Section -->
+    <div class="row mb-4" id="kpi-container">
+      <div class="col-md-3">
+        <div class="kpi-card">
+          <div class="kpi-title">Overall Pending Employees</div>
+          <div class="kpi-value" id="overall-kpi">0</div>
+        </div>
+      </div>
+      <div class="col-md-9">
+        <div class="row" id="zone-kpis">
+          <!-- Zone KPIs dynamically injected here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Hierarchy Tabs Section -->
+    <div class="table-container mb-4 border-0 shadow-sm">
+      <h5 class="fw-bold mb-3">Hierarchy View</h5>
+      <ul class="nav nav-pills mb-3" id="hierarchy-tabs" role="tablist">
+        <!-- Tabs injected here -->
+      </ul>
+      <div class="tab-content" id="hierarchy-tabContent">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle" id="hierarchy-table">
+            <thead id="hierarchy-thead"></thead>
+            <tbody id="hierarchy-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Raw Data Section -->
+    <div class="table-container border-0 shadow-sm">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0">Raw Data</h5>
+        <button class="btn btn-outline-success btn-sm" onclick="downloadCSV()">Download as CSV</button>
+      </div>
+      <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+        <table class="table table-sm table-hover table-bordered" id="raw-table">
+          <thead class="table-light" style="position: sticky; top: 0;" id="raw-thead"></thead>
+          <tbody id="raw-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let globalData = { headers: [], rows: [] };
+    let filteredRows = [];
+    let headerMap = {};
+    const filterColumns = ['Zone', 'GM', 'Region', 'RM', 'AM', 'CEC', 'LBP'];
+    const tabColumns = ['GM', 'Region', 'RM', 'AM', 'CEC', 'LBP', 'DH Name'];
+    let activeTab = 'GM';
+
+    // Fetch data on load
+    google.script.run
+      .withSuccessHandler(initDashboard)
+      .withFailureHandler(function(err) {
+        document.getElementById('loader').innerHTML =
+          '<div class="text-center text-danger p-4">' +
+          '<strong>Failed to load data</strong><br>' + err.message + '</div>';
+      })
+      .getDashboardData();
+
+    function initDashboard(data) {
+      globalData = data;
+      filteredRows = data.rows;
+
+      data.headers.forEach((h, i) => { headerMap[h] = i; });
+
+      buildFilters();
+      renderAll();
+
+      document.getElementById('loader').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+    }
+
+    function buildFilters() {
+      const container = document.getElementById('filters-container');
+      container.innerHTML = '';
+
+      filterColumns.forEach(col => {
+        if(headerMap[col] === undefined) return;
+
+        let uniqueVals = [...new Set(globalData.rows.map(r => String(r[headerMap[col]]).trim()))].filter(v => v !== "");
+        uniqueVals.sort((a,b) => a.localeCompare(b));
+
+        const colDiv = document.createElement('div');
+        colDiv.className = 'col-md';
+
+        let optionsHtml = `<option value="">All ${col}</option>`;
+        uniqueVals.forEach(val => { optionsHtml += `<option value="${val}">${val}</option>`; });
+
+        colDiv.innerHTML = `
+          <label class="filter-label mb-1">${col}</label>
+          <select class="form-select form-select-sm" id="filter-${col}" onchange="applyFilters()">
+            ${optionsHtml}
+          </select>
+        `;
+        container.appendChild(colDiv);
+      });
+
+      // Build Tabs
+      const tabContainer = document.getElementById('hierarchy-tabs');
+      tabContainer.innerHTML = '';
+      tabColumns.forEach((col, index) => {
+        if(headerMap[col] === undefined) return;
+        const btnHtml = `
+          <li class="nav-item" role="presentation">
+            <button class="nav-link ${index === 0 ? 'active' : ''}" onclick="switchTab('${col}', this)" type="button">${col}</button>
+          </li>
+        `;
+        tabContainer.innerHTML += btnHtml;
+      });
+      activeTab = tabColumns.find(c => headerMap[c] !== undefined);
+    }
+
+    // Case-Insensitive Filtering
+    function applyFilters() {
+      filteredRows = globalData.rows.filter(row => {
+        for (let col of filterColumns) {
+          if (headerMap[col] === undefined) continue;
+
+          const filterElement = document.getElementById(`filter-${col}`);
+          if (!filterElement) continue;
+
+          const filterVal = filterElement.value.toLowerCase().trim();
+          const rowVal = String(row[headerMap[col]]).toLowerCase().trim();
+
+          if (filterVal !== "" && rowVal !== filterVal) {
+            return false;
+          }
+        }
+        return true;
+      });
+      renderAll();
+    }
+
+    function renderAll() {
+      renderKPIs();
+      renderHierarchyTable();
+      renderRawData();
+    }
+
+    function renderKPIs() {
+      document.getElementById('overall-kpi').innerText = filteredRows.length.toLocaleString();
+
+      const zoneColIdx = headerMap['Zone'];
+      const zoneKpiContainer = document.getElementById('zone-kpis');
+      zoneKpiContainer.innerHTML = '';
+
+      if(zoneColIdx !== undefined) {
+        let zoneCounts = {};
+        filteredRows.forEach(r => {
+          let z = r[zoneColIdx].trim() || 'Unassigned';
+          zoneCounts[z] = (zoneCounts[z] || 0) + 1;
+        });
+
+        // Sort large to small
+        let sortedZones = Object.entries(zoneCounts).sort((a,b) => b[1] - a[1]);
+
+        sortedZones.forEach(z => {
+          zoneKpiContainer.innerHTML += `
+            <div class="col-md-3 mb-2">
+              <div class="kpi-card" style="border-top-color: #198754;">
+                <div class="kpi-title">${z[0]}</div>
+                <div class="kpi-value">${z[1].toLocaleString()}</div>
+              </div>
+            </div>
+          `;
+        });
+      }
+    }
+
+    function switchTab(colName, btnElement) {
+      document.querySelectorAll('#hierarchy-tabs .nav-link').forEach(btn => btn.classList.remove('active'));
+      btnElement.classList.add('active');
+      activeTab = colName;
+      renderHierarchyTable();
+    }
+
+    function renderHierarchyTable() {
+      const thead = document.getElementById('hierarchy-thead');
+      const tbody = document.getElementById('hierarchy-tbody');
+
+      thead.innerHTML = `<tr><th>${activeTab.toUpperCase()}</th><th>PENDING EMPLOYEES</th></tr>`;
+
+      const colIdx = headerMap[activeTab];
+      let counts = {};
+
+      filteredRows.forEach(r => {
+        let val = r[colIdx] ? r[colIdx].trim() : 'Unknown';
+        if (val === '') val = 'Unknown';
+        counts[val] = (counts[val] || 0) + 1;
+      });
+
+      // Sort Large to Small
+      let sortedData = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+
+      let bodyHtml = '';
+      sortedData.forEach(item => {
+        bodyHtml += `<tr><td class="fw-bold">${item[0]}</td><td>${item[1].toLocaleString()}</td></tr>`;
+      });
+      tbody.innerHTML = bodyHtml;
+    }
+
+    function renderRawData() {
+      const thead = document.getElementById('raw-thead');
+      const tbody = document.getElementById('raw-tbody');
+
+      let headHtml = '<tr>';
+      globalData.headers.forEach(h => { headHtml += `<th>${h}</th>`; });
+      headHtml += '</tr>';
+      thead.innerHTML = headHtml;
+
+      let bodyHtml = '';
+      // Limit render to 500 rows to prevent browser freeze; export contains all
+      const limitRows = filteredRows.slice(0, 500);
+      limitRows.forEach(row => {
+        bodyHtml += '<tr>';
+        row.forEach(cell => { bodyHtml += `<td>${cell}</td>`; });
+        bodyHtml += '</tr>';
+      });
+      if (filteredRows.length > 500) {
+        bodyHtml += `<tr><td colspan="${globalData.headers.length}" class="text-center text-muted">Showing first 500 records. Export to view all ${filteredRows.length} rows.</td></tr>`;
+      }
+      tbody.innerHTML = bodyHtml;
+    }
+
+    function downloadCSV() {
+      if (filteredRows.length === 0) return alert('No data to export.');
+
+      let csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += globalData.headers.join(",") + "\r\n";
+
+      filteredRows.forEach(row => {
+        let rowStr = row.map(v => {
+          let cell = String(v).replace(/"/g, '""');
+          return `"${cell}"`;
+        }).join(",");
+        csvContent += rowStr + "\r\n";
+      });
+
+      var encodedUri = encodeURI(csvContent);
+      var link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "Untrained_Wishmaster_Data.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
+</body>
+</html>
