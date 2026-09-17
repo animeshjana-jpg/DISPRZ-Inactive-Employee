@@ -343,7 +343,7 @@
 
     const counts = {};
     filteredRows.forEach(r => {
-      const z = (String(r[zIdx] || '')).trim() || 'Unassigned';
+      const z = (String(r[zIdx] || '')).trim() || 'No Mapping';
       counts[z] = (counts[z] || 0) + 1;
     });
 
@@ -367,7 +367,7 @@
     const cIdx = colIdx(activeTab);
     const counts = {};
     filteredRows.forEach(r => {
-      let v = (cIdx !== undefined && r[cIdx] !== undefined && r[cIdx] !== '') ? String(r[cIdx]).trim() : '(Unassigned)';
+      let v = (cIdx !== undefined && r[cIdx] !== undefined && r[cIdx] !== '') ? String(r[cIdx]).trim() : 'No Mapping';
       counts[v] = (counts[v] || 0) + 1;
     });
 
