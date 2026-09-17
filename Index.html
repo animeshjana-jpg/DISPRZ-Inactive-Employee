@@ -239,10 +239,20 @@
     })
     .getDashboardData();
 
+  // Case-insensitive column index lookup
+  function colIdx(col) {
+    if (headerMap[col] !== undefined) return headerMap[col];
+    const lower = col.toLowerCase();
+    for (const k of Object.keys(headerMap)) {
+      if (k.toLowerCase() === lower) return headerMap[k];
+    }
+    return undefined;
+  }
+
   function initDashboard(data) {
     globalData = data;
     filteredRows = data.rows;
-    data.headers.forEach((h, i) => { headerMap[h] = i; });
+    data.headers.forEach((h, i) => { headerMap[h.trim()] = i; });
     buildFilters();
     buildTabs();
     renderAll();
@@ -255,8 +265,8 @@
     const container = document.getElementById('filters-container');
     container.innerHTML = '';
     FILTER_COLS.forEach(col => {
-      if (headerMap[col] === undefined) return;
-      const vals = [...new Set(globalData.rows.map(r => String(r[headerMap[col]]).trim()))]
+      if (colIdx(col) === undefined) return;
+      const vals = [...new Set(globalData.rows.map(r => String(r[colIdx(col)]).trim()))]
         .filter(v => v !== '').sort((a, b) => a.localeCompare(b));
 
       const div = document.createElement('div');
@@ -274,10 +284,10 @@
   function applyFilters() {
     filteredRows = globalData.rows.filter(row => {
       for (const col of FILTER_COLS) {
-        if (headerMap[col] === undefined) continue;
+        if (colIdx(col) === undefined) continue;
         const el = document.getElementById('filter-' + col);
         if (!el || el.value === '') continue;
-        if (String(row[headerMap[col]]).trim().toLowerCase() !== el.value) return false;
+        if (String(row[colIdx(col)]).trim().toLowerCase() !== el.value) return false;
       }
       return true;
     });
@@ -297,7 +307,7 @@
   function buildTabs() {
     const ul = document.getElementById('hier-tabs');
     ul.innerHTML = '';
-    const available = TAB_COLS.filter(c => headerMap[c] !== undefined);
+    const available = TAB_COLS.filter(c => colIdx(c) !== undefined);
     activeTab = available[0] || '';
     available.forEach((col, i) => {
       ul.innerHTML += `
@@ -328,7 +338,7 @@
   // ── Zone KPIs ─────────────────────────────────────────────
   function renderZoneKPIs() {
     document.querySelectorAll('.zone-kpi-col').forEach(el => el.remove());
-    const zIdx = headerMap['Zone'];
+    const zIdx = colIdx('Zone');
     if (zIdx === undefined) return;
 
     const counts = {};
@@ -354,10 +364,10 @@
   // ── Hierarchy Table ───────────────────────────────────────
   function renderHierarchy() {
     if (!activeTab) return;
-    const colIdx = headerMap[activeTab];
+    const cIdx = colIdx(activeTab);
     const counts = {};
     filteredRows.forEach(r => {
-      let v = (r[colIdx] !== undefined && r[colIdx] !== '') ? String(r[colIdx]).trim() : '(Unassigned)';
+      let v = (cIdx !== undefined && r[cIdx] !== undefined && r[cIdx] !== '') ? String(r[cIdx]).trim() : '(Unassigned)';
       counts[v] = (counts[v] || 0) + 1;
     });
 
