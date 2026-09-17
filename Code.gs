@@ -7,23 +7,49 @@ function doGet() {
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
-// Replace with your Google Sheet ID (from the sheet URL: /spreadsheets/d/<SHEET_ID>/edit)
-var SPREADSHEET_ID = '1FQX9rkxQJ1sr2-BimnNilvv8Wr1Xu4Jj';
+// ID of the CSV file in Google Drive
+var CSV_FILE_ID = '1FQX9rkxQJ1sr2-BimnNilvv8Wr1Xu4Jj';
 
 function getDashboardData() {
   try {
-    var ss = SPREADSHEET_ID && SPREADSHEET_ID !== 'YOUR_SPREADSHEET_ID_HERE'
-      ? SpreadsheetApp.openById(SPREADSHEET_ID)
-      : SpreadsheetApp.getActiveSpreadsheet();
-    if (!ss) throw new Error('Spreadsheet not found. Set SPREADSHEET_ID in Code.gs.');
-    const sheet = ss.getSheetByName('latest_untrained') || ss.getActiveSheet();
-    if (!sheet) throw new Error("Sheet 'latest_untrained' not found.");
+    var file = DriveApp.getFileById(CSV_FILE_ID);
+    var csvText = file.getBlob().getDataAsString('UTF-8');
+    var rows = parseCSV(csvText);
 
-    const data = sheet.getDataRange().getDisplayValues();
-    if (data.length <= 1) return { headers: [], rows: [] };
+    if (rows.length <= 1) return { headers: [], rows: [] };
 
-    return { headers: data[0], rows: data.slice(1) };
+    return { headers: rows[0], rows: rows.slice(1) };
   } catch (e) {
     throw new Error('getDashboardData failed: ' + e.message);
   }
+}
+
+// Handles quoted fields and commas inside quotes
+function parseCSV(text) {
+  var result = [];
+  var lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+
+  lines.forEach(function(line) {
+    if (line.trim() === '') return;
+    var row = [];
+    var inQuote = false;
+    var cell = '';
+
+    for (var i = 0; i < line.length; i++) {
+      var ch = line[i];
+      if (ch === '"') {
+        if (inQuote && line[i + 1] === '"') { cell += '"'; i++; }
+        else { inQuote = !inQuote; }
+      } else if (ch === ',' && !inQuote) {
+        row.push(cell.trim());
+        cell = '';
+      } else {
+        cell += ch;
+      }
+    }
+    row.push(cell.trim());
+    result.push(row);
+  });
+
+  return result;
 }
