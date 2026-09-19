@@ -385,14 +385,36 @@
     });
   }
 
+  const ZONE_BADGE = {
+    east:  { bg:'#e8f5e9', color:'#1b5e20', border:'#a5d6a7' },
+    west:  { bg:'#fff8e1', color:'#e65100', border:'#ffe082' },
+    north: { bg:'#ede7f6', color:'#4527a0', border:'#ce93d8' },
+    south: { bg:'#ffebee', color:'#b71c1c', border:'#ef9a9a' }
+  };
+
+  function zoneBadgeHtml(zone) {
+    const s = zone.toLowerCase();
+    const style = ZONE_BADGE[s] || { bg:'#f3f4f6', color:'#374151', border:'#d1d5db' };
+    return `<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.7rem;font-weight:700;
+      background:${style.bg};color:${style.color};border:1px solid ${style.border};white-space:nowrap;">${escHtml(zone)}</span>`;
+  }
+
   // ── Hierarchy Table ───────────────────────────────────────
   function renderHierarchy() {
     if (!activeTab) return;
     const cIdx = colIdx(activeTab);
+    const zIdx = colIdx('Zone');
     const counts = {};
+    const zoneSets = {};
+
     filteredRows.forEach(r => {
       let v = (cIdx !== undefined && r[cIdx] !== undefined && r[cIdx] !== '') ? String(r[cIdx]).trim() : 'No Mapping';
       counts[v] = (counts[v] || 0) + 1;
+      if (!zoneSets[v]) zoneSets[v] = new Set();
+      if (zIdx !== undefined) {
+        const z = String(r[zIdx] || '').trim();
+        if (z) zoneSets[v].add(z);
+      }
     });
 
     const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
@@ -403,21 +425,27 @@
       <tr>
         <th>#</th>
         <th>${dispName(activeTab)}</th>
+        <th>Zone</th>
         <th>Pending Employees</th>
         <th style="min-width:120px;"></th>
       </tr>`;
 
-    document.getElementById('hier-tbody').innerHTML = sorted.map(([name, cnt], i) => `
-      <tr>
-        <td class="rank-cell">${i + 1}</td>
-        <td class="name-cell">${escHtml(name)}</td>
-        <td class="count-cell">${cnt.toLocaleString()}</td>
-        <td>
-          <div class="bar-wrap">
-            <div class="bar-fill" style="width:${Math.round((cnt / max) * 100)}%"></div>
-          </div>
-        </td>
-      </tr>`).join('');
+    document.getElementById('hier-tbody').innerHTML = sorted.map(([name, cnt], i) => {
+      const zones = [...(zoneSets[name] || [])].sort();
+      const zoneCells = zones.length ? zones.map(zoneBadgeHtml).join(' ') : '<span style="color:#9ca3af;font-size:0.75rem;">—</span>';
+      return `
+        <tr>
+          <td class="rank-cell">${i + 1}</td>
+          <td class="name-cell">${escHtml(name)}</td>
+          <td>${zoneCells}</td>
+          <td class="count-cell">${cnt.toLocaleString()}</td>
+          <td>
+            <div class="bar-wrap">
+              <div class="bar-fill" style="width:${Math.round((cnt / max) * 100)}%"></div>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
   }
 
   // ── Raw Data Table ────────────────────────────────────────
