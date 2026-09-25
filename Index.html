@@ -172,30 +172,28 @@
 
     <!-- ── Raw Data ── -->
     <div class="section-card">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="section-title mb-0">
-          Raw Data
-          <span class="text-muted fw-normal ms-1" style="font-size:0.75rem;" id="raw-count-label"></span>
+      <!-- Single-row header: title | search | buttons -->
+      <div class="d-flex align-items-center gap-2 mb-3" style="flex-wrap:wrap;">
+        <div class="section-title mb-0 me-1" style="white-space:nowrap;">
+          Raw Data <span class="text-muted fw-normal" style="font-size:0.72rem;" id="raw-count-label"></span>
         </div>
-        <div class="d-flex gap-2">
+        <!-- Search -->
+        <div style="display:flex;align-items:center;flex:1;min-width:180px;max-width:280px;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;padding:4px 8px;gap:5px;">
+          <input type="text" id="emp-search"
+            placeholder="Search by Emp ID or Profile ID…"
+            oninput="searchEmployee()"
+            style="border:none;outline:none;flex:1;font-size:0.78rem;color:#374151;background:transparent;min-width:0;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="#9ca3af" viewBox="0 0 16 16" style="flex-shrink:0;">
+            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398l3.85 3.85a1 1 0 0 0 1.415-1.415l-3.868-3.833zm-5.242 1.156a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z"/>
+          </svg>
+        </div>
+        <span id="search-result-label" class="text-muted" style="font-size:0.72rem;white-space:nowrap;"></span>
+        <button class="btn btn-link text-secondary p-0" id="clear-search-btn" onclick="clearSearch()" style="display:none;font-size:0.72rem;">Clear</button>
+        <div class="ms-auto d-flex gap-2" style="flex-shrink:0;">
           <button class="btn btn-sm btn-outline-primary" onclick="openFullscreen()">Full Page View</button>
           <button class="btn btn-sm btn-success" onclick="downloadCSV()">Download CSV</button>
           <button class="btn btn-sm btn-warning fw-semibold" onclick="downloadAllCSV()">Download with all Mapping</button>
         </div>
-      </div>
-      <!-- Employee Search -->
-      <div class="mb-3 d-flex align-items-center gap-2">
-        <div style="display:flex;align-items:center;max-width:340px;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;padding:4px 10px;gap:6px;">
-          <input type="text" id="emp-search"
-            placeholder="Search by Employee ID or Profile ID…"
-            oninput="searchEmployee()"
-            style="border:none;outline:none;flex:1;font-size:0.8rem;color:#374151;background:transparent;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="#9ca3af" viewBox="0 0 16 16" style="flex-shrink:0;">
-            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398l3.85 3.85a1 1 0 0 0 1.415-1.415l-3.868-3.833zm-5.242 1.156a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z"/>
-          </svg>
-        </div>
-        <span id="search-result-label" class="text-muted" style="font-size:0.75rem;white-space:nowrap;"></span>
-        <button class="btn btn-sm btn-link text-secondary p-0" id="clear-search-btn" onclick="clearSearch()" style="display:none;font-size:0.75rem;">Clear</button>
       </div>
       <div class="raw-wrap table-responsive">
         <table class="table table-sm table-hover table-bordered mb-0">
