@@ -183,6 +183,20 @@
           <button class="btn btn-sm btn-warning fw-semibold" onclick="downloadAllCSV()">Download with all Mapping</button>
         </div>
       </div>
+      <!-- Employee Search -->
+      <div class="mb-3 d-flex align-items-center gap-2">
+        <div class="position-relative" style="max-width:320px;width:100%;">
+          <input type="text" id="emp-search" class="form-control form-control-sm ps-4"
+            placeholder="Search by Employee ID or Profile ID…"
+            oninput="searchEmployee()" style="border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.8rem;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="#9ca3af" viewBox="0 0 16 16"
+            style="position:absolute;left:10px;top:50%;transform:translateY(-50%);">
+            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398l3.85 3.85a1 1 0 0 0 1.415-1.415l-3.868-3.833zm-5.242 1.156a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z"/>
+          </svg>
+        </div>
+        <span id="search-result-label" class="text-muted" style="font-size:0.75rem;white-space:nowrap;"></span>
+        <button class="btn btn-sm btn-link text-secondary p-0" id="clear-search-btn" onclick="clearSearch()" style="display:none;font-size:0.75rem;">Clear</button>
+      </div>
       <div class="raw-wrap table-responsive">
         <table class="table table-sm table-hover table-bordered mb-0">
           <thead class="table-light" id="raw-thead"></thead>
@@ -369,6 +383,13 @@
     const n = filteredRows.length;
     document.getElementById('kpi-overall').textContent = n.toLocaleString();
     document.getElementById('header-total').textContent = n.toLocaleString() + ' employees';
+    // Reset employee search when filters change
+    const searchEl = document.getElementById('emp-search');
+    if (searchEl) { searchEl.value = ''; }
+    const clearBtn = document.getElementById('clear-search-btn');
+    if (clearBtn) clearBtn.style.display = 'none';
+    const lbl = document.getElementById('search-result-label');
+    if (lbl) lbl.textContent = '';
     renderZoneKPIs();
     renderHierarchy();
     renderRawTable();
@@ -488,22 +509,60 @@
   }
 
   // ── Raw Data Table ────────────────────────────────────────
-  function renderRawTable() {
-    const n = filteredRows.length;
+  // ── Employee Search ───────────────────────────────────────
+  function searchEmployee() {
+    const term = (document.getElementById('emp-search').value || '').trim().toLowerCase();
+    const clearBtn = document.getElementById('clear-search-btn');
+    const label = document.getElementById('search-result-label');
+
+    if (!term) {
+      clearBtn.style.display = 'none';
+      label.textContent = '';
+      renderRawTable(filteredRows);
+      return;
+    }
+
+    clearBtn.style.display = '';
+    const eidIdx = colIdx('employee_external_id');
+    const pidIdx = colIdx('profile_id');
+    const results = filteredRows.filter(row => {
+      const eid = eidIdx !== undefined ? String(row[eidIdx] || '').toLowerCase() : '';
+      const pid = pidIdx !== undefined ? String(row[pidIdx] || '').toLowerCase() : '';
+      return eid.includes(term) || pid.includes(term);
+    });
+
+    label.textContent = results.length + ' match' + (results.length !== 1 ? 'es' : '') + ' found';
+    renderRawTable(results);
+  }
+
+  function clearSearch() {
+    document.getElementById('emp-search').value = '';
+    document.getElementById('clear-search-btn').style.display = 'none';
+    document.getElementById('search-result-label').textContent = '';
+    renderRawTable(filteredRows);
+  }
+
+  function renderRawTable(rows) {
+    rows = rows || filteredRows;
+    const n = rows.length;
+    const total = filteredRows.length;
     const cols = rawColMap();
     document.getElementById('raw-count-label').textContent =
-      '(' + n.toLocaleString() + ' rows' + (n > 500 ? ', showing first 500' : '') + ')';
+      '(' + total.toLocaleString() + ' rows' + (total > 500 ? ', showing first 500' : '') + ')';
 
     document.getElementById('raw-thead').innerHTML =
       '<tr>' + cols.map(c => `<th>${escHtml(c.name)}</th>`).join('') + '</tr>';
 
-    let body = filteredRows.slice(0, 500).map(row =>
+    let body = rows.slice(0, 500).map(row =>
       '<tr>' + buildRawRow(row, cols) + '</tr>'
     ).join('');
     if (n > 500) {
       body += `<tr><td colspan="${cols.length}" class="text-center text-muted py-2" style="font-size:0.78rem;">
         Showing first 500 of ${n.toLocaleString()} records. Use <strong>Download CSV</strong> or <strong>Full Page View</strong> for all data.
       </td></tr>`;
+    }
+    if (n === 0) {
+      body = `<tr><td colspan="${cols.length}" class="text-center text-muted py-3" style="font-size:0.82rem;">No matching records found.</td></tr>`;
     }
     document.getElementById('raw-tbody').innerHTML = body;
   }
