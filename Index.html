@@ -193,6 +193,19 @@
   </div>
 </div>
 
+<!-- Overdue Modules Detail Popup -->
+<div class="modal fade" id="overdueModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
+    <div class="modal-content" style="border-radius:12px;overflow:hidden;">
+      <div class="modal-header py-2 px-3" style="background:#f8fafc;border-bottom:1px solid #e5e7eb;">
+        <span class="fw-bold" style="font-size:0.85rem;color:#111827;">Overdue Modules</span>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-3 py-3" id="overdue-content" style="max-height:60vh;overflow-y:auto;font-size:0.82rem;color:#374151;"></div>
+    </div>
+  </div>
+</div>
+
 <!-- Full Page Modal -->
 <div class="modal fade" id="fullModal" tabindex="-1">
   <div class="modal-dialog modal-fullscreen">
@@ -448,21 +461,45 @@
     }).join('');
   }
 
+  // Columns to display in the raw data table (order preserved)
+  const RAW_COLS = [
+    'employee_external_id', 'profile_id', 'first_name', 'last_name',
+    'line_of_business', 'joining_date', 'name', 'overdue_modules'
+  ];
+
+  // Build { colName: index } only for RAW_COLS that exist in the data
+  function rawColMap() {
+    return RAW_COLS.map(c => ({ name: c, idx: colIdx(c) })).filter(c => c.idx !== undefined);
+  }
+
+  function buildRawRow(row, cols) {
+    return cols.map(c => {
+      const val = String(row[c.idx] || '');
+      if (c.name === 'overdue_modules' && val.trim() !== '') {
+        const safe = val.replace(/'/g, "\\'").replace(/\n/g, '\\n');
+        return `<td><a href="javascript:void(0)" onclick="showOverdue('${safe}')"
+          style="font-size:0.78rem;color:#1565c0;text-decoration:none;font-weight:600;">
+          View Modules</a></td>`;
+      }
+      return `<td>${escHtml(val)}</td>`;
+    }).join('');
+  }
+
   // ── Raw Data Table ────────────────────────────────────────
   function renderRawTable() {
     const n = filteredRows.length;
-    const showing = Math.min(n, 500);
+    const cols = rawColMap();
     document.getElementById('raw-count-label').textContent =
       '(' + n.toLocaleString() + ' rows' + (n > 500 ? ', showing first 500' : '') + ')';
 
-    const headHtml = '<tr>' + globalData.headers.map(h => `<th>${escHtml(h)}</th>`).join('') + '</tr>';
-    document.getElementById('raw-thead').innerHTML = headHtml;
+    document.getElementById('raw-thead').innerHTML =
+      '<tr>' + cols.map(c => `<th>${escHtml(c.name)}</th>`).join('') + '</tr>';
 
     let body = filteredRows.slice(0, 500).map(row =>
-      '<tr>' + row.map(cell => `<td>${escHtml(String(cell))}</td>`).join('') + '</tr>'
+      '<tr>' + buildRawRow(row, cols) + '</tr>'
     ).join('');
     if (n > 500) {
-      body += `<tr><td colspan="${globalData.headers.length}" class="text-center text-muted py-2" style="font-size:0.78rem;">
+      body += `<tr><td colspan="${cols.length}" class="text-center text-muted py-2" style="font-size:0.78rem;">
         Showing first 500 of ${n.toLocaleString()} records. Use <strong>Download CSV</strong> or <strong>Full Page View</strong> for all data.
       </td></tr>`;
     }
@@ -472,15 +509,28 @@
   // ── Full Page Modal ───────────────────────────────────────
   function openFullscreen() {
     const n = filteredRows.length;
+    const cols = rawColMap();
     document.getElementById('modal-count-label').textContent = '(' + n.toLocaleString() + ' rows)';
 
-    const headHtml = '<tr>' + globalData.headers.map(h => `<th>${escHtml(h)}</th>`).join('') + '</tr>';
-    document.getElementById('modal-thead').innerHTML = headHtml;
+    document.getElementById('modal-thead').innerHTML =
+      '<tr>' + cols.map(c => `<th>${escHtml(c.name)}</th>`).join('') + '</tr>';
     document.getElementById('modal-tbody').innerHTML = filteredRows.map(row =>
-      '<tr>' + row.map(cell => `<td>${escHtml(String(cell))}</td>`).join('') + '</tr>'
+      '<tr>' + buildRawRow(row, cols) + '</tr>'
     ).join('');
 
     new bootstrap.Modal(document.getElementById('fullModal')).show();
+  }
+
+  // ── Overdue Modules Popup ─────────────────────────────────
+  function showOverdue(raw) {
+    // Split by common delimiters and render as a numbered list
+    const items = raw.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+    const html = items.length > 1
+      ? '<ol style="margin:0;padding-left:18px;line-height:1.8;">' +
+          items.map(m => `<li>${escHtml(m)}</li>`).join('') + '</ol>'
+      : `<p style="margin:0;">${escHtml(raw)}</p>`;
+    document.getElementById('overdue-content').innerHTML = html;
+    new bootstrap.Modal(document.getElementById('overdueModal')).show();
   }
 
   // ── CSV Download ──────────────────────────────────────────
