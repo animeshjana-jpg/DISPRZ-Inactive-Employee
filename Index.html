@@ -180,7 +180,7 @@
         <!-- Search -->
         <div style="display:flex;align-items:center;flex:1;min-width:180px;max-width:280px;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;padding:4px 8px;gap:5px;">
           <input type="text" id="emp-search"
-            placeholder="Search by Emp ID or Profile ID…"
+            placeholder="Search by Emp ID, Profile ID or Name…"
             oninput="searchEmployee()"
             style="border:none;outline:none;flex:1;font-size:0.78rem;color:#374151;background:transparent;min-width:0;">
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="#9ca3af" viewBox="0 0 16 16" style="flex-shrink:0;">
@@ -523,10 +523,12 @@
     clearBtn.style.display = '';
     const eidIdx = colIdx('employee_external_id');
     const pidIdx = colIdx('profile_id');
+    const nameIdx = colIdx('name');
     const results = filteredRows.filter(row => {
-      const eid = eidIdx !== undefined ? String(row[eidIdx] || '').toLowerCase() : '';
-      const pid = pidIdx !== undefined ? String(row[pidIdx] || '').toLowerCase() : '';
-      return eid.includes(term) || pid.includes(term);
+      const eid  = eidIdx  !== undefined ? String(row[eidIdx]  || '').toLowerCase() : '';
+      const pid  = pidIdx  !== undefined ? String(row[pidIdx]  || '').toLowerCase() : '';
+      const name = nameIdx !== undefined ? String(row[nameIdx] || '').toLowerCase() : '';
+      return eid.includes(term) || pid.includes(term) || name.includes(term);
     });
 
     label.textContent = results.length + ' match' + (results.length !== 1 ? 'es' : '') + ' found';
