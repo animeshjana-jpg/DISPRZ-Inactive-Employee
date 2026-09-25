@@ -180,6 +180,7 @@
         <div class="d-flex gap-2">
           <button class="btn btn-sm btn-outline-primary" onclick="openFullscreen()">Full Page View</button>
           <button class="btn btn-sm btn-success" onclick="downloadCSV()">Download CSV</button>
+          <button class="btn btn-sm btn-warning fw-semibold" onclick="downloadAllCSV()">Download with all Mapping</button>
         </div>
       </div>
       <div class="raw-wrap table-responsive">
@@ -214,6 +215,7 @@
         <span class="fw-bold" style="font-size:0.9rem;">Raw Data — Full View &nbsp;<span class="text-muted fw-normal" id="modal-count-label"></span></span>
         <div class="ms-auto d-flex gap-2 me-2">
           <button class="btn btn-sm btn-success" onclick="downloadCSV()">Download CSV</button>
+          <button class="btn btn-sm btn-warning fw-semibold" onclick="downloadAllCSV()">Download with all Mapping</button>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
@@ -543,6 +545,19 @@
     const a = document.createElement('a');
     a.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
     a.download = 'Untrained_Wishmaster_Data.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+
+  // Downloads all original columns (including all mapping columns)
+  function downloadAllCSV() {
+    if (!filteredRows.length) { alert('No data to export.'); return; }
+    let csv = globalData.headers.join(',') + '\r\n';
+    filteredRows.forEach(row => {
+      csv += row.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',') + '\r\n';
+    });
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+    a.download = 'Untrained_Wishmaster_Full_Mapping.csv';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   }
 
